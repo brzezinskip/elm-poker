@@ -21,6 +21,7 @@ type alias Game =
     , tableCards : Card.Cards
     , players : Players
     , passedTurns : Int
+    , lastRaise : Maybe Player.LastRaise
     }
 
 
@@ -89,6 +90,7 @@ update msg model =
                 , passedTurns = 0
                 , currentPlayerId = 1
                 , pot = 0
+                , lastRaise = Nothing
                 }
             , Cmd.none
             )
@@ -118,8 +120,15 @@ update msg model =
                             )
 
                         Player.CheckRaise bet ->
-                            ( { game | players = Player.setBankroll game.players game.currentPlayerId (\curr -> curr - bet) }
+                            ( { game
+                                | players =
+                                    Player.setBankroll
+                                        game.players
+                                        game.currentPlayerId
+                                        (\curr -> curr - bet)
+                              }
                                 |> addToPot bet
+                                |> setLastRaise bet game.currentPlayerId
                                 |> setNextPlayer
                                 |> InProgress
                             , Cmd.none
@@ -148,6 +157,11 @@ update msg model =
 addToPot : Int -> Game -> Game
 addToPot value game =
     { game | pot = game.pot + value }
+
+
+setLastRaise : Int -> Int -> Game -> Game
+setLastRaise bet playerId game =
+    { game | lastRaise = Just { amount = bet, raisingPlayer = playerId } }
 
 
 exitHand : Game -> Game
@@ -220,7 +234,14 @@ view model =
             InProgress game ->
                 div
                     []
-                    [ Html.map PlayerAction (Player.viewPlayers game.currentPlayerId game.players) ]
+                    [ Html.map PlayerAction
+                        (Player.viewPlayers
+                            { currentPlayerId = game.currentPlayerId
+                            , players = game.players
+                            , lastRaise = game.lastRaise
+                            }
+                        )
+                    ]
         ]
 
 

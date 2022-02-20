@@ -1,5 +1,6 @@
 module Player exposing
-    ( Msg(..)
+    ( LastRaise
+    , Msg(..)
     , Player
     , actionToText
     , createPlayers
@@ -32,6 +33,10 @@ type alias Player =
     , isPlaying : Bool
     , bet : Maybe Int
     }
+
+
+type alias LastRaise =
+    { amount : Int, raisingPlayer : Int }
 
 
 createPlayer : Int -> Player
@@ -144,23 +149,40 @@ viewPlayerInput { bankroll } =
         [ text "bet size" ]
 
 
-viewPlayer : Int -> Player -> Html Msg
-viewPlayer currentPlayerId player =
+availableActions : Player -> Maybe LastRaise -> List ActionConfig
+availableActions { bet, bankroll, id } lastRaise =
     let
-        availableActions =
-            if currentPlayerId == player.id then
-                [ { action = Call, disabled = False }
-                , { action = Check, disabled = False }
-                , { action = Fold, disabled = False }
-                , { action = AllIn, disabled = False }
-                ]
-                    ++ (case player.bet of
-                            Just n ->
-                                [ { action = CheckRaise n, disabled = n >= player.bankroll } ]
+        callCheck =
+            case lastRaise of
+                Just { raisingPlayer } ->
+                    if raisingPlayer /= id then
+                        [ { action = Call, disabled = False } ]
 
-                            Nothing ->
-                                []
-                       )
+                    else
+                        []
+
+                Nothing ->
+                    [ { action = Check, disabled = False } ]
+    in
+    callCheck
+        ++ [ { action = Fold, disabled = False }
+           , { action = AllIn, disabled = False }
+           ]
+        ++ (case bet of
+                Just n ->
+                    [ { action = CheckRaise n, disabled = n >= bankroll } ]
+
+                Nothing ->
+                    []
+           )
+
+
+viewPlayer : Int -> Maybe LastRaise -> Player -> Html Msg
+viewPlayer currentPlayerId lastRaise player =
+    let
+        actions =
+            if currentPlayerId == player.id then
+                availableActions player lastRaise
 
             else
                 []
@@ -177,14 +199,21 @@ viewPlayer currentPlayerId player =
             :: viewBankroll player
             :: viewPlayerHand player.hand
             :: betSize
-            :: List.map viewAction availableActions
+            :: List.map viewAction actions
         )
 
 
-viewPlayers : Int -> List Player -> Html Msg
-viewPlayers currentPlayerId players =
+type alias ViewPlayersConfig =
+    { currentPlayerId : Int
+    , players : List Player
+    , lastRaise : Maybe LastRaise
+    }
+
+
+viewPlayers : ViewPlayersConfig -> Html Msg
+viewPlayers { currentPlayerId, players, lastRaise } =
     let
         participants =
             List.filter .isPlaying players
     in
-    div [] (List.map (viewPlayer currentPlayerId) participants)
+    div [] (List.map (viewPlayer currentPlayerId lastRaise) participants)

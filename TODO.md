@@ -12,10 +12,6 @@ Participating in the game:
 TODO:
 
 
-1. Add state tracking of last raise action
-  ```elm
-    type alias LastRaiseAction = {raiseAmount: Int, raisingPlayer: Player}
-  ```
 
 2. Implement availableActions function 
   ```elm
