@@ -101,13 +101,19 @@ update msg model =
                     ( model, Cmd.none )
 
                 InProgress game ->
-                    let
-                        newGame =
-                            game |> setNextPlayer
-                    in
                     case action of
-                        Player.Call ->
-                            ( InProgress newGame, Cmd.none )
+                        Player.Call amount ->
+                            ( { game
+                                | players =
+                                    Player.setBankroll game.players
+                                        game.currentPlayerId
+                                        (\curr -> curr - amount)
+                              }
+                                |> addToPot amount
+                                |> setNextPlayer
+                                |> InProgress
+                            , Cmd.none
+                            )
 
                         Player.Check ->
                             ( InProgress

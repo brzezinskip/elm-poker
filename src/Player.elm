@@ -17,7 +17,7 @@ import Html.Events exposing (onClick, onInput)
 
 
 type Msg
-    = Call -- minimum required to continue playing a hand
+    = Call Int -- minimum required to continue playing a hand
     | Check -- to pass on betting. I there's no bet to player, there's nothing to call. If player doesn't want to bet, player can check. If there's no action from other players in the betting round
     | CheckRaise Int -- check current bet and raise by X  amount before moving to the next player
       -- then action comes back to player to call fold or raise
@@ -91,8 +91,8 @@ actionToText : Msg -> Html Msg
 actionToText action =
     text <|
         case action of
-            Call ->
-                "Call"
+            Call amount ->
+                "Call: " ++ String.fromInt amount
 
             Check ->
                 "Check"
@@ -154,15 +154,23 @@ availableActions { bet, bankroll, id } lastRaise =
     let
         callCheck =
             case lastRaise of
-                Just { raisingPlayer } ->
+                Just { raisingPlayer, amount } ->
                     if raisingPlayer /= id then
-                        [ { action = Call, disabled = False } ]
+                        [ { action = Call amount, disabled = False } ]
 
                     else
                         []
 
                 Nothing ->
                     [ { action = Check, disabled = False } ]
+
+        checkRaise betSize =
+            case lastRaise of
+                Just { amount } ->
+                    [ { action = CheckRaise (amount + betSize), disabled = (amount + betSize) >= bankroll } ]
+
+                Nothing ->
+                    [ { action = CheckRaise betSize, disabled = betSize >= bankroll } ]
     in
     callCheck
         ++ [ { action = Fold, disabled = False }
@@ -170,7 +178,7 @@ availableActions { bet, bankroll, id } lastRaise =
            ]
         ++ (case bet of
                 Just n ->
-                    [ { action = CheckRaise n, disabled = n >= bankroll } ]
+                    checkRaise n
 
                 Nothing ->
                     []
